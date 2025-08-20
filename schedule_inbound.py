@@ -39,7 +39,7 @@ def send_5min_before_top_of_hour():
     """
     now = datetime.now(JST)
     target = (now + timedelta(minutes=5)).replace(minute=0, second=0, microsecond=0)
-    send_inbound(f"定時テスト送信 {target.strftime('%H:%M')} の5分前")
+    send_inbound(f"定時巡回時刻{target.strftime('%H:%M')} 5分前です")
 
 if __name__ == "__main__":
     # APScheduler のデフォルト動作を安定化
