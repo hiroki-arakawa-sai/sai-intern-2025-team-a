@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # 毎日 09:55〜15:55（=10:00〜16:00の“5分前”）に実行
     # hour=9-15, minute=55, timezone=JST
-    trigger = CronTrigger(hour="9-15", minute=10, timezone=JST)
+    trigger = CronTrigger(hour="9-15", minute=55, timezone=JST)
     sched.add_job(send_5min_before_top_of_hour, trigger, id="hourly_5min_before", replace_existing=True)
 
     print("スケジュール設定完了。以下の時刻に送信します（JST）：12:55, 10:55, 11:55, 12:55, 13:55, 14:55, 15:55")
