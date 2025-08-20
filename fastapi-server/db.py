@@ -20,8 +20,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-#----------------------------------------------------------------
-# 受け取った文字列を保存
+# 受け取った文字列を保存----------------------------------------------------------------
 def save_message(username, text):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -29,14 +28,21 @@ def save_message(username, text):
     conn.commit()
     conn.close()
     print("DBに保存しました", text)
-#--------------------------------------------------------------
-# 文字列を取り出す
+# 文字列を取り出す---------------------------------------------------------
 def get_message():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT userName, text FROM messages")
     rows = cursor.fetchall()
     conn.close()
-    print(rows)
+    print("[DEBUG] all_rows = ", rows)
     return rows
-#---------------------------------------------------------------
+# 送信者からメッセージを抽出---------------------------------------------------------------
+def extract_message_from_sender(user_name: str):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT text FROM messages WHERE userName = ?", (user_name,))
+    rows = cursor.fetchall()
+    print("[DEBUG] usename_rows = ", rows)
+    conn.close()
+    return rows
