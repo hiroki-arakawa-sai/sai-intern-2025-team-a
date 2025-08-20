@@ -12,7 +12,8 @@ def init_db():
     # messageというテーブルを作る...のちのち変更して
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, # 主キー
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        userName TEXT, 
         text TEXT
         )
     """)
@@ -21,10 +22,10 @@ def init_db():
     conn.close()
 #----------------------------------------------------------------
 # 受け取った文字列を保存
-def save_message(text):
+def save_message(username, text):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (text) VALUES (?)", (text,))
+    cursor.execute("INSERT INTO messages (userName, text) VALUES (?, ?)", (username, text))
     conn.commit()
     conn.close()
     print("DBに保存しました", text)
@@ -33,7 +34,7 @@ def save_message(text):
 def get_message():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, text FROM messages")
+    cursor.execute("SELECT userName, text FROM messages")
     rows = cursor.fetchall()
     conn.close()
     print(rows)

@@ -30,11 +30,13 @@ class Request(BaseModel):
 
 @app.post("/test/memo", response_model=Response)
 async def receive_message(req: Request):
-    db.save_message(req.data)
+    db.save_message(req.senderUserName, req.data)
     print(f"[DEBUG] 受け取った data: {req.data}")
+    print(f"[DEBUG] 送信者: {req.senderUserName} ")
     db.get_message()
     return Response(message=f"受け取ったデータ: {req.data}")
 
+db.init_db()
 
 if __name__ == "__main__":
     # FastAPIサーバーを開始
