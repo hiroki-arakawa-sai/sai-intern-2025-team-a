@@ -1,11 +1,41 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
+:root{
+  --center-width: 50%;
+  --header-height: 10vh;
 }
 
 header {
   margin: 0;
   background-color: rgb(109, 183, 248);
   width: 100%;
-  height: 60px;
+  height: var(--header-height);
+}
+
+.content {
+  display: flex;
+  height: calc(100vh - var(--header-height));
+}
+
+.side {
+  width: calc((100% - var(--center-width)) / 2);
+  height: auto;
+  background-color: aliceblue;
+}
+
+.center-content {
+  height: auto;
+  width: var(--center-width);
+}
+
+.center-content h2 {
+  margin: auto 0 auto 20px;
+}
+
+.center-content select {
+  margin: 10px 15px 10px auto;
+}
+
+.center-content .message {
+  height: 90%;
+  overflow: scroll;
+  scrollbar-width: none;
 }
