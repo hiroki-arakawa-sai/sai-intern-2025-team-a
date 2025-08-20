@@ -4,10 +4,20 @@
 }
 
 header {
+  display: flex;
   margin: 0;
   background-color: rgb(109, 183, 248);
   width: 100%;
   height: var(--header-height);
+}
+
+header button {
+  background-color: rgb(217, 255, 255);
+  margin: auto 15px auto auto;
+  height: 40px;
+  width: 50px;
+  border: none;
+  border-radius: 5%;
 }
 
 .content {

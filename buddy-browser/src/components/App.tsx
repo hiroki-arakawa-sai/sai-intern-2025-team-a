@@ -12,7 +12,8 @@ function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
 
-  useEffect(() => {
+  // メッセージ取得関数
+  const fetchMessages = () => {
     fetch('http://localhost:8000/messages')
       .then((res) => res.json())
       .then((data) => setMessages(data))
@@ -20,6 +21,10 @@ function App() {
         console.error(err);
         setMessages(testData);
       });
+  };
+
+  useEffect(() => {
+    fetchMessages();
   }, []);
 
   // ユーザー一覧を抽出
@@ -33,6 +38,7 @@ function App() {
   return (
     <>
       <header>
+        <button onClick={fetchMessages}>更新</button>
       </header>
       <div className="content">
         <div className='side'></div>

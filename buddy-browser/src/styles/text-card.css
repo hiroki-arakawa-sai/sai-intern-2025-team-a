@@ -1,7 +1,7 @@
 .text-card {
     margin: 10px;
     padding: 5px;
-    background-color: rgb(194, 235, 252);
+    background-color: rgb(164, 249, 250);
     border-radius: 15px;
 }
 
@@ -15,7 +15,7 @@
 }
 
 .text-card p {
-    background-color: rgb(233, 255, 255);
+    background-color: rgb(234, 253, 253);
     width: 100%;
     border-radius: 10px;
     margin: 0;
