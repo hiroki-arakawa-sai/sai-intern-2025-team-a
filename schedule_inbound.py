@@ -100,6 +100,176 @@ _WEEK_MAP_JA = {"月":"mon","火":"tue","水":"wed","木":"thu","金":"fri","土
 
 LabelMode = Literal["none", "next_hour_if_55"]
 
+# ====== ここから “配列要素の指定削除・変更（追加/置換）” 用ユーティリティ ======
+
+# 直近に反映された曜日を保持（apply_schedule_from_payloadで更新）
+_LAST_WEEKDAYS: List[str] = []
+
+# apply_schedule_from_payload をラップして _LAST_WEEKDAYS を同期
+def _apply_and_remember(*, times: List[str], weekdays: List[str],
+                        label_mode: LabelMode = "next_hour_if_55",
+                        text_template: Optional[str] = None) -> Dict:
+    global _LAST_WEEKDAYS
+    state = apply_schedule_from_payload(
+        times=times, weekdays=weekdays,
+        label_mode=label_mode, text_template=text_template
+    )
+    _LAST_WEEKDAYS = state["weekdays"]
+    return state
+
+# 起動直後に __main__ で apply_schedule_from_payload を呼ばないケース向けの初期化
+def _ensure_weekdays_initialized():
+    global _LAST_WEEKDAYS
+    if not _LAST_WEEKDAYS:
+        _LAST_WEEKDAYS = ["mon", "tue", "wed", "thu", "fri"]
+
+# 既存ジョブIDから idx と HHMM を抽出
+_JOB_ID_RE = re.compile(rf"^{JOB_ID_PREFIX}(\d{{3}})_([0-2]\d[0-5]\d)$")
+
+def _parse_job_id(job_id: str) -> Optional[tuple[int, str]]:
+    m = _JOB_ID_RE.match(job_id)
+    if not m:
+        return None
+    return int(m.group(1)), m.group(2)
+
+def _timestr_to_hm(timestr: str) -> tuple[int, int]:
+    timestr = timestr.strip()
+    if not _TIME_RE.match(timestr):
+        raise ValueError(f"Invalid time: '{timestr}' (HH:MM)")
+    h, m = map(int, timestr.split(":"))
+    return h, m
+
+def _suffix_from_time(timestr: str) -> str:
+    h, m = _timestr_to_hm(timestr)
+    return f"_{h:02d}{m:02d}"
+
+def _list_job_ids_by_time(timestr: str) -> List[str]:
+    suf = _suffix_from_time(timestr)
+    return [j.id for j in sched.get_jobs() if j.id.startswith(JOB_ID_PREFIX) and j.id.endswith(suf)]
+
+def _next_job_index() -> int:
+    idxs = []
+    for j in sched.get_jobs():
+        parsed = _parse_job_id(j.id)
+        if parsed:
+            idxs.append(parsed[0])
+    return (max(idxs) + 1) if idxs else 0
+
+def _current_times_from_jobs() -> List[str]:
+    # 現在登録されている時刻（HH:MM）を一意化して昇順で返す
+    hm_set = set()
+    for j in sched.get_jobs():
+        parsed = _parse_job_id(j.id)
+        if not parsed:
+            continue
+        hhmm = parsed[1]
+        hm_set.add(f"{hhmm[:2]}:{hhmm[2:]}")
+    return sorted(hm_set)
+
+# --- 時刻の追加/削除/置換 ---
+
+def add_times(times: List[str]) -> Dict:
+    """新規の時刻だけを追加（既存と重複する時刻はスキップ）"""
+    _ensure_weekdays_initialized()
+    norm = _validate_times(times)
+    existing = set(_current_times_from_jobs())
+    added_ids = []
+    for t in norm:
+        if t in existing:
+            continue
+        h, m = _timestr_to_hm(t)
+        trigger = CronTrigger(day_of_week=",".join(_LAST_WEEKDAYS), hour=h, minute=m, timezone=JST)
+        job = _make_job_func(h, m, "next_hour_if_55", None)  # 既定の mode/template を使う
+        job_id = f"{JOB_ID_PREFIX}{_next_job_index():03d}_{h:02d}{m:02d}"
+        sched.add_job(job, trigger, id=job_id, replace_existing=False)
+        added_ids.append(job_id)
+    return {"added_job_ids": added_ids, "times": _current_times_from_jobs(), "weekdays": _LAST_WEEKDAYS}
+
+def remove_times(times: List[str]) -> Dict:
+    """指定した時刻(HH:MM)のジョブをすべて削除"""
+    removed = []
+    for t in _validate_times(times):
+        for jid in _list_job_ids_by_time(t):
+            sched.remove_job(jid)
+            removed.append(jid)
+    return {"removed_job_ids": removed, "times": _current_times_from_jobs(), "weekdays": _LAST_WEEKDAYS}
+
+def replace_time(old_time: str, new_time: str) -> Dict:
+    """old_time を削除し new_time を追加（アトミック保証はしないが、順に実行）"""
+    _ = remove_times([old_time])
+    return add_times([new_time])
+
+# --- 曜日の追加/削除/一括設定 ---
+# CronTrigger は day_of_week を後から直接変えられないため、全ジョブを再作成する。
+
+def set_weekdays(weekdays: List[str]) -> Dict:
+    """曜日を与え直し（現在の時刻は維持）"""
+    norm_wd = [_norm_weekday(w) for w in weekdays]
+    if not norm_wd:
+        raise ValueError("weekdays must not be empty")
+    times_now = _current_times_from_jobs()
+    return _apply_and_remember(times=times_now, weekdays=norm_wd)
+
+def add_weekdays(days: List[str]) -> Dict:
+    _ensure_weekdays_initialized()
+    cur = set(_LAST_WEEKDAYS)
+    for d in days:
+        cur.add(_norm_weekday(d))
+    return set_weekdays(sorted(cur))
+
+def remove_weekdays(days: List[str]) -> Dict:
+    _ensure_weekdays_initialized()
+    cur = set(_LAST_WEEKDAYS)
+    for d in days:
+        cur.discard(_norm_weekday(d))
+    if not cur:
+        raise ValueError("Removing these weekdays would leave none.")
+    return set_weekdays(sorted(cur))
+
+# --- 文面テンプレートやラベルモードの変更 ---
+# 既存ジョブの関数クロージャに反映させるため、全ジョブを組み直す。
+
+def set_text_template(new_template: str) -> Dict:
+    if not isinstance(new_template, str) or not new_template:
+        raise ValueError("text_template must be a non-empty string")
+    times_now = _current_times_from_jobs()
+    _ensure_weekdays_initialized()
+    return apply_schedule_from_payload(
+        times=times_now, weekdays=_LAST_WEEKDAYS,
+        text_template=new_template, label_mode="next_hour_if_55"
+    )
+
+def set_label_mode(new_mode: LabelMode) -> Dict:
+    if new_mode not in ("none", "next_hour_if_55"):
+        raise ValueError("label_mode must be 'none' or 'next_hour_if_55'")
+    times_now = _current_times_from_jobs()
+    _ensure_weekdays_initialized()
+    return apply_schedule_from_payload(
+        times=times_now, weekdays=_LAST_WEEKDAYS,
+        label_mode=new_mode
+    )
+
+# --- 送信先ユーザーの追加/削除 ---
+
+def add_target_users(users: List[str]) -> List[str]:
+    """TARGET_USERS に追加（重複は除去のうえ末尾へ）"""
+    global TARGET_USERS
+    seen = set(TARGET_USERS)
+    for u in users:
+        if u not in seen:
+            TARGET_USERS.append(u)
+            seen.add(u)
+    return TARGET_USERS
+
+def remove_target_users(users: List[str]) -> List[str]:
+    """TARGET_USERS から削除"""
+    global TARGET_USERS
+    remove_set = set(users)
+    TARGET_USERS = [u for u in TARGET_USERS if u not in remove_set]
+    return TARGET_USERS
+# ====== ここまで ======
+
+
 def _norm_weekday(w: str) -> str:
     w0 = w.strip().lower()
     if w0 in _WEEK_MAP_EN:
