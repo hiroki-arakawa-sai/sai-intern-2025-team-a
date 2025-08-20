@@ -1,10 +1,10 @@
 import '../styles/App.css'
 
 import { testCard } from './text-card'
+import { RightSide } from './right-side'
 
 import type { Data } from '../types/data'
 import { testData } from '../types/data'
-
 
 import { useEffect, useState } from 'react';
 
@@ -14,7 +14,7 @@ function App() {
 
   // メッセージ取得関数
   const fetchMessages = () => {
-    fetch('http://localhost:8000/messages')
+    fetch('http://http://0.0.0.0:8000/api/all')
       .then((res) => res.json())
       .then((data) => setMessages(data))
       .catch((err) => {
@@ -56,7 +56,7 @@ function App() {
             {filteredMessages.map((data) => (testCard(data)))}
           </div>
         </div>
-        <div className='side'></div>
+          <RightSide />
       </div>
     </>
   )
