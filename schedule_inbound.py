@@ -1,10 +1,10 @@
-# send_inbound_at_1113.py
+# send_inbound_schedule.py
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 # ---- 設定 ----
 URL = "https://ip0-254.science-arts.com/buddybot/peerchat"
@@ -33,15 +33,28 @@ def send_inbound(text: str):
     resp = requests.post(URL, headers=headers, files=files, timeout=30)
     print(datetime.now(JST), "HTTP", resp.status_code, resp.text)
 
+def send_5min_before_top_of_hour():
+    """次の“ちょうどの時刻”の5分前に相当するタイミングで呼ばれる想定。
+    例: 09:55に呼ばれたら10:00の5分前として扱う。
+    """
+    now = datetime.now(JST)
+    target = (now + timedelta(minutes=5)).replace(minute=0, second=0, microsecond=0)
+    send_inbound(f"定時テスト送信 {target.strftime('%H:%M')} の5分前")
+
 if __name__ == "__main__":
-    # 今日の11:13 JST に設定
-    run_at = datetime.now(JST).replace(hour=11, minute=15, second=0, microsecond=0)
-    if run_at <= datetime.now(JST):
-        # もしすでに過ぎていたら翌日にする
-        run_at = run_at.replace(day=run_at.day + 1)
+    # APScheduler のデフォルト動作を安定化
+    sched = BlockingScheduler(
+        timezone=JST,
+        job_defaults={
+            "coalesce": True,           # 遅延時は実行をまとめる
+            "misfire_grace_time": 120,  # 最大2分の遅延を許容
+        },
+    )
 
-    print("次回送信予定:", run_at)
+    # 毎日 09:55〜15:55（=10:00〜16:00の“5分前”）に実行
+    # hour=9-15, minute=55, timezone=JST
+    trigger = CronTrigger(hour="9-15", minute=10, timezone=JST)
+    sched.add_job(send_5min_before_top_of_hour, trigger, id="hourly_5min_before", replace_existing=True)
 
-    sched = BlockingScheduler(timezone=JST)
-    sched.add_job(lambda: send_inbound("定時テスト送信 11:12"), DateTrigger(run_date=run_at))
+    print("スケジュール設定完了。以下の時刻に送信します（JST）：12:55, 10:55, 11:55, 12:55, 13:55, 14:55, 15:55")
     sched.start()
