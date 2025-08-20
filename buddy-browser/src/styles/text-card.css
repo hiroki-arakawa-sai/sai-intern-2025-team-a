@@ -1,0 +1,31 @@
+.text-card {
+    margin: 10px;
+    padding: 5px;
+    background-color: rgb(164, 249, 250);
+    border-radius: 15px;
+}
+
+.text-card .sender {
+    /* background-color: rgb(233, 255, 255);
+    width: 100%;
+    border-radius: 10px; */
+    padding: 6px 12px;
+    margin-bottom: 6px;
+    box-sizing: border-box;
+}
+
+.text-card p {
+    background-color: rgb(234, 253, 253);
+    width: 100%;
+    border-radius: 10px;
+    margin: 0;
+    padding: 5px 10px;
+    font-size: 16px;
+    word-break: break-all;
+    box-sizing: border-box;
+}
+
+.text-card small {
+    padding: 0 5px;
+    color: gray;
+}

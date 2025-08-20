@@ -1,0 +1,51 @@
+:root{
+  --center-width: 50%;
+  --header-height: 10vh;
+}
+
+header {
+  display: flex;
+  margin: 0;
+  background-color: rgb(109, 183, 248);
+  width: 100%;
+  height: var(--header-height);
+}
+
+header button {
+  background-color: rgb(217, 255, 255);
+  margin: auto 15px auto auto;
+  height: 40px;
+  width: 50px;
+  border: none;
+  border-radius: 5%;
+}
+
+.content {
+  display: flex;
+  height: calc(100vh - var(--header-height));
+}
+
+.side {
+  width: calc((100% - var(--center-width)) / 2);
+  height: auto;
+  background-color: aliceblue;
+}
+
+.center-content {
+  height: auto;
+  width: var(--center-width);
+}
+
+.center-content h2 {
+  margin: auto 0 auto 20px;
+}
+
+.center-content select {
+  margin: 10px 15px 10px auto;
+}
+
+.center-content .message {
+  height: 90%;
+  overflow: scroll;
+  scrollbar-width: none;
+}
