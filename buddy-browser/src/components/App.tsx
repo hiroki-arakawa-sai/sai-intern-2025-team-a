@@ -10,22 +10,64 @@ import type { Time } from "../types/time";
 import { useEffect, useState } from "react";
 
 type TimeRangeBoxProps = {
+  year: string;
+  month: string;
+  date: string;
   start: string;
   end: string;
+  setYear: (value: string) => void;
+  setMonth: (value: string) => void;
+  setDate: (value: string) => void;
   setStart: (value: string) => void;
   setEnd: (value: string) => void;
 };
 
 // 時間で絞り込むコンポーネント
 export function TimeRangeBox({
+  year,
+  month,
+  date,
   start,
   end,
+  setYear,
+  setMonth,
+  setDate,
   setStart,
   setEnd,
 }: TimeRangeBoxProps) {
   return (
     <div className="p-4 flex items-center space-x-2">
-      <label>時間で絞り込む:</label>
+      <label>
+        絞り込み
+        <br />
+      </label>
+      <input
+        type="number"
+        value={year}
+        onChange={(e) => setYear(e.target.value)}
+        placeholder="年"
+        className="border rounded p-2 y-100"
+      />
+      <label>年</label>
+      <input
+        type="number"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        placeholder="月"
+        className="border rounded p-2 m-12"
+      />
+      <label>月</label>
+      <input
+        type="number"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        placeholder="日"
+        className="border rounded p-2 d-31"
+      />
+      <label>
+        日<br />
+      </label>
+      <label>時間: </label>
       <input
         type="time"
         value={start}
@@ -49,6 +91,10 @@ function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [times, setTimes] = useState<Time[]>([]);
+  
+  const [year, setYear] = useState("");
+  const [month, setMonth] = useState("");
+  const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
@@ -97,10 +143,28 @@ function App() {
     // ユーザーフィルター
     if (selectedUser && m.senderUserName !== selectedUser) return false;
 
+    // --- 日付と時間フィルター ---
+    const messageDate = m.time.slice(0, 10); // "YYYY-MM-DD"
+    const [msgYear, msgMonth, msgDay] = messageDate.split("-");
+    const messageTime = m.time.slice(11, 16); // "HH:MM"
+
+    console.log({
+      year,
+      msgYear,
+      month,
+      msgMonth,
+      date,
+      msgDay,
+      startTime,
+      messageTime,
+    });
+
+    if (year !== "" && msgYear !== year.padStart(4, "0")) return false;
+    if (month !== "" && msgMonth !== month.padStart(2, "0")) return false;
+    if (date !== "" && msgDay !== date.padStart(2, "0")) return false;
     // 時間フィルター
-    const messageTime = m.time.slice(11, 16); // "HH:MM" 部分だけ取り出す
-    if (startTime && messageTime < startTime) return false;
-    if (endTime && messageTime > endTime) return false;
+    if (startTime !== "" && messageTime < startTime) return false;
+    if (endTime !== "" && messageTime > endTime) return false;
 
     return true;
   });
@@ -117,8 +181,14 @@ function App() {
             <h2>メッセージ</h2>
 
             <TimeRangeBox
+              year={year}
+              month={month}
+              date={date}
               start={startTime}
               end={endTime}
+              setYear={setYear}
+              setMonth={setMonth}
+              setDate={setDate}
               setStart={setStartTime}
               setEnd={setEndTime}
             />
