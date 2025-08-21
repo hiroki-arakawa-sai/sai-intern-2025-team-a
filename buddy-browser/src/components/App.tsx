@@ -17,7 +17,7 @@ function App() {
 
   // メッセージと時間取得関数
   const fetchMessages = () => {
-    fetch('http://172.16.1.72:8000/api/all') //ボイスメモ取得
+    fetch('http://localhost:8000/api/all') //ボイスメモ取得
       .then((res) => res.json())
       .then((data) => {
         // APIの型をData型に変換
