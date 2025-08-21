@@ -100,15 +100,16 @@ async def receive_message(req: Request):
 # GET確認用------------------------------
 @app.get("/schedule/entries")
 async def get_entries():
+    """
+    現在の LOCATION_MAP を [{id,time,area}, ...] 形式で返す
+    """
     try:
-        times = inbound.get_times()
+        return inbound.get_location_list()  # time昇順で [{id,time,area}, ...]
     except Exception as e:
-        print("[ERROR] inbound.get_times() failed:", e)
+        print("[ERROR] inbound.get_location_list() failed:", e)
         traceback.print_exc()
-        # クライアントには簡潔な500を返す
-        raise HTTPException(status_code=500, detail=f"inbound.get_times() failed: {type(e).__name__}")
-    # 正常時のレスポンス
-    return [{"id": i+1, "time": t, "area": ""} for i, t in enumerate(times)]
+        raise HTTPException(status_code=500, detail=f"get_location_list failed: {type(e).__name__}")
+
 # -----------------------------------------------
 
 async def log_post_request(request):
