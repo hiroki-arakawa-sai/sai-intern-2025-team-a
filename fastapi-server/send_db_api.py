@@ -30,7 +30,6 @@ def get_message(name: str):
         for row in rows
     ]
 
-
 if __name__ == "__main__":
     # FastAPIサーバーを開始
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -36,7 +36,7 @@ def get_all_info():
     cursor.execute("SELECT * FROM messages")
     rows = cursor.fetchall()
     conn.close()
-    print("[DEBUG] all_rows = ", rows)
+    #print("[DEBUG] all_rows = ", rows)
     return rows
 # 送信者からメッセージを抽出---------------------------------------------------------------
 def extract_message_from_sender(user_name: str):
@@ -44,7 +44,7 @@ def extract_message_from_sender(user_name: str):
     cursor = conn.cursor()
     cursor.execute("SELECT text FROM messages WHERE userName = ?", (user_name,))
     rows = cursor.fetchall()
-    print("[DEBUG] usename_rows = ", rows)
+    #print("[DEBUG] usename_rows = ", rows)
     conn.close()
     return rows
 
