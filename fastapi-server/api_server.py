@@ -18,12 +18,7 @@ app = FastAPI()
 @app.on_event("startup")
 async def _startup():
     #一度だけ呼ぶ
-    inbound.set_location_map({
-        "11:00": "二階テナント",
-        "12:00": "駐車場",
-        "13:00": "一階食品"
-    })
-    inbound.start_in_background(lead_minutes=5)
+    inbound.start_in_background()
 
 
 # 受信JSONのスキーマ定義 ---------------------------------------------
