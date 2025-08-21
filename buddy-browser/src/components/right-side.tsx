@@ -48,7 +48,7 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
   return (
     <div className='right-side side'>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="time-input">時間を入力:</label>
+        <label htmlFor="time-input">時間を設定</label>
         {times.map((time) => (
           <div key={time.id}>
             <input
@@ -65,11 +65,14 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
               value={time.area}
               onChange={e => setTimes(times.map(t => t.id === time.id ? { ...t, area: e.target.value } : t))}
             />
-            <button type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
+            <button className="delete-button" type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
           </div>
         ))}
-        <button type="button" onClick={handleAdd}>追加</button>
-        <button type="submit">保存</button>
+        <div className="edit-buttons">
+          <button className="add-button" type="button" onClick={handleAdd}>追加</button>
+          <button className="save-button" type="submit">保存</button>
+        </div>
+        
       </form>
     </div>
   )

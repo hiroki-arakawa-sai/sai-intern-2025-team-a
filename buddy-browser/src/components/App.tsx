@@ -4,8 +4,10 @@ import { RightSide } from "./right-side";
 import { testCard } from "./text-card";
 
 import type { Data } from "../types/data";
+import { testData } from "../types/data";
 
 import type { Time } from "../types/time";
+import { testTimes } from "../types/time";
 
 import { useEffect, useState } from "react";
 
@@ -36,52 +38,54 @@ export function TimeRangeBox({
   setEnd,
 }: TimeRangeBoxProps) {
   return (
-    <div className="p-4 flex items-center space-x-2">
+    <div className="p-4 flex items-center space-x-2 time-range">
       <label>
         絞り込み
         <br />
       </label>
-      <input
-        type="number"
-        value={year}
-        onChange={(e) => setYear(e.target.value)}
-        placeholder="年"
-        className="border rounded p-2 y-100"
-      />
-      <label>年</label>
-      <input
-        type="number"
-        value={month}
-        onChange={(e) => setMonth(e.target.value)}
-        placeholder="月"
-        className="border rounded p-2 m-12"
-      />
-      <label>月</label>
-      <input
-        type="number"
-        value={date}
-        onChange={(e) => setDate(e.target.value)}
-        placeholder="日"
-        className="border rounded p-2 d-31"
-      />
-      <label>
-        日<br />
-      </label>
-      <label>時間: </label>
-      <input
-        type="time"
-        value={start}
-        onChange={(e) => setStart(e.target.value)}
-        className="border rounded p-2"
-      />
-      <span>から</span>
-      <input
-        type="time"
-        value={end}
-        onChange={(e) => setEnd(e.target.value)}
-        className="border rounded p-2"
-      />
-      <span>まで</span>
+      <div>
+        <input
+          type="number"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          placeholder="年"
+          className="border rounded p-2 y-100"
+        />
+        <label>年</label>
+        <input
+          type="number"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          placeholder="月"
+          className="border rounded p-2 m-12"
+        />
+        <label>月</label>
+        <input
+          type="number"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          placeholder="日"
+          className="border rounded p-2 d-31"
+        />
+        <label>
+          日<br />
+        </label>
+        {/* <label>時間: </label> */}
+        <input
+          type="time"
+          value={start}
+          onChange={(e) => setStart(e.target.value)}
+          className="border rounded p-2"
+        />
+        <span>から</span>
+        <input
+          type="time"
+          value={end}
+          onChange={(e) => setEnd(e.target.value)}
+          className="border rounded p-2"
+        />
+        <span>まで</span>
+      </div>
     </div>
   );
 }
@@ -144,9 +148,11 @@ function App() {
     if (selectedUser && m.senderUserName !== selectedUser) return false;
 
     // --- 日付と時間フィルター ---
-    const messageDate = m.time.slice(0, 10); // "YYYY-MM-DD"
+    // timeがnumber型の場合は文字列に変換
+    const timeStr = typeof m.time === "number" ? new Date(m.time).toISOString().replace("T", " ").slice(0, 19) : m.time;
+    const messageDate = timeStr.slice(0, 10); // "YYYY-MM-DD"
     const [msgYear, msgMonth, msgDay] = messageDate.split("-");
-    const messageTime = m.time.slice(11, 16); // "HH:MM"
+    const messageTime = timeStr.slice(11, 16); // "HH:MM"
 
     console.log({
       year,
@@ -177,32 +183,33 @@ function App() {
       <div className="content">
         <div className="side"></div>
         <div className="center-content">
-          <div style={{ display: "flex", height: "10%" }}>
-            <h2>メッセージ</h2>
-
+          <div style={{height:"20%"}}>
+            <div style={{ display: "flex"}}>
+              <h2>メッセージ</h2>
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+              >
+                <option value="">全ユーザー</option>
+                {userList.map((user) => (
+                  <option key={user} value={user}>
+                    {user}
+                  </option>
+                ))}
+              </select>
+            </div>
             <TimeRangeBox
-              year={year}
-              month={month}
-              date={date}
-              start={startTime}
-              end={endTime}
-              setYear={setYear}
-              setMonth={setMonth}
-              setDate={setDate}
-              setStart={setStartTime}
-              setEnd={setEndTime}
-            />
-            <select
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-            >
-              <option value="">全ユーザー</option>
-              {userList.map((user) => (
-                <option key={user} value={user}>
-                  {user}
-                </option>
-              ))}
-            </select>
+                year={year}
+                month={month}
+                date={date}
+                start={startTime}
+                end={endTime}
+                setYear={setYear}
+                setMonth={setMonth}
+                setDate={setDate}
+                setStart={setStartTime}
+                setEnd={setEndTime}
+              />
           </div>
           <div className="message">
             {filteredMessages.map((data) => testCard(data))}
