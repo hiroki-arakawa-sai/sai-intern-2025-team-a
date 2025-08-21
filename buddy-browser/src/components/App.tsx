@@ -17,16 +17,24 @@ function App() {
 
   // メッセージと時間取得関数
   const fetchMessages = () => {
-    // メッセージ取得
-    fetch('http://0.0.0.0:8000/api/all')
+    fetch('http://172.16.1.72:8000/api/all') //ボイスメモ取得
       .then((res) => res.json())
-      .then((data) => setMessages(data))
+      .then((data) => {
+        // APIの型をData型に変換
+        const converted = data.map((item: { userName: string; message: string; time: string }) => ({
+          senderUserName: item.userName,
+          text: item.message,
+          time: item.time,
+          chatBotName: ""
+        }));
+        setMessages(converted);
+      })
       .catch((err) => {
         console.error(err);
         setMessages(testData);
       });
     // Time型配列取得
-    fetch('http://0.0.0.0:8000/api/times')
+    fetch('http://0.0.0.0:8000/api/times') //巡回時間取得
       .then((res) => res.json())
       .then((data) => setTimes(data))
       .catch((err) => {
