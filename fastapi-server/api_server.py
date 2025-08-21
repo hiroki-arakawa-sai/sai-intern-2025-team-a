@@ -1,45 +1,27 @@
+from tkinter.constants import BROWSE
 import uvicorn
 import db
 import schedule_inbound as inbound
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from pydantic import BaseModel, Field, constr
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
+
+# GET動作確認用
+from fastapi import HTTPException
+import traceback
+
 
 # FastAPIアプリを初期化
 app = FastAPI()
 
-
-# ────────────────────────────────────────────────────────────────────
-# Startup: 位置マップの設定 → スケジュール再構築 → バックグラウンド起動
-# ────────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def _startup():
-    # 1) 先に LOCATION_MAP を設定（必要に応じて編集）
-    inbound.set_location_map({
-        "11:00": "二階テナント",
-        "11:48": "一階食品",
-        "12:58": "駐車場",
-        "13:02": "一階食品",
-        "14:16": "二階テナント",
-        "15:00": "三階駐車場",
-        "16:00": "すべてのフロア",
-    })
-
-    # 2) すぐにスケジュールを再構築（ここでジョブが作られる）
-    inbound.schedule_from_location_map(lead_minutes=0)
-
-    # 3) その後、バックグラウンドでスケジューラを起動
-    inbound.start_in_background(lead_minutes=0)
-
-    # デバッグ出力
-    print("[DEBUG] LOCATION_MAP:", inbound.get_location_map())
-    print("[DEBUG] schedule:", inbound.get_current_schedule())
+    #一度だけ呼ぶ
+    inbound.start_in_background()
 
 
-# ────────────────────────────────────────────────────────────────────
-# 受信JSONのスキーマ定義
-# ────────────────────────────────────────────────────────────────────
+# 受信JSONのスキーマ定義 ---------------------------------------------
 class Response(BaseModel):
     message: str
 
@@ -47,6 +29,12 @@ class ScheduleEntry(BaseModel):
     id: int = Field(..., ge=0)  # 数値（0以上）
     time: constr(pattern=r'^(?:[01]\d|2[0-3]):[0-5]\d$')  # "HH:MM"
     area: str
+
+
+# エンドポイント -------------------------------------------------------
+@app.post("/test", response_model=Response)
+async def receive_message():
+    return Response(message="Hello World!")
 
 class MemoRequest(BaseModel):
     chatBotName: str
@@ -56,36 +44,36 @@ class MemoRequest(BaseModel):
     data: str
     customParams: Dict[str, Any] = {}
 
-
-# ────────────────────────────────────────────────────────────────────
-# エンドポイント
-# ────────────────────────────────────────────────────────────────────
-@app.post("/test", response_model=Response)
-async def receive_message():
-    return Response(message="Hello World!")
-
 @app.post("/test/memo", response_model=Response)
-async def receive_message_memo(req: MemoRequest):
+async def receive_message(req: MemoRequest):
     db.save_message(req.senderUserName, req.data)
     print(f"[DEBUG] 受け取った data: {req.data}")
     print(f"[DEBUG] 送信者: {req.senderUserName} ")
     db.get_message()
     return Response(message=f"受け取ったデータ: {req.data}")
 
-# 巡回エントリ（時間・場所）一覧を返す
+# ==== スケジュール受け取りAPI ====
+# @app.get("/schedule/entries")
+# async def get_entries():
+#     times = inbound.get_times()
+#     # 既存スケジュールには id/area が無いので、id は連番採番、area は空文字で返す
+#     return [{"id": i+1, "time": t, "area": ""} for i, t in enumerate(times)]
+
+# GET確認用------------------------------
 @app.get("/schedule/entries")
 async def get_entries():
-    # LOCATION_MAP を [{id,time,area}, ...] で返す
-    return inbound.get_location_list()
+    try:
+        times = inbound.get_times()
+    except Exception as e:
+        print("[ERROR] inbound.get_times() failed:", e)
+        traceback.print_exc()
+        # クライアントには簡潔な500を返す
+        raise HTTPException(status_code=500, detail=f"inbound.get_times() failed: {type(e).__name__}")
+    # 正常時のレスポンス
+    return [{"id": i+1, "time": t, "area": ""} for i, t in enumerate(times)]
+# -----------------------------------------------
 
-# 現在のジョブ一覧（id / next_run_time）
-@app.get("/schedule/jobs")
-async def get_jobs():
-    return inbound.get_current_schedule()
-
-# 受信ログ用フック（デバッグ）
-#現在使用していない
-#async def log_post_request(request: Request):
+async def log_post_request(request):
     body = await request.body()
     print("=== POST受信 ===")
     print("Headers:", dict(request.headers))
@@ -94,32 +82,23 @@ async def get_jobs():
     return body
 
 @app.post("/hook")
-async def hook(entries: List[ScheduleEntry]):
-    """
-    受け取った配列 [{id,time,area}, ...] で LOCATION_MAP を上書きし、スケジュールを再構築。
-    """
-    # 受信データ -> dict("HH:MM" -> "場所")
-    new_map = {e.time: e.area for e in entries}
+async def hook(request: Request):
+    await log_post_request(request)
+    return {"status": "ok"}
 
-    # 置き換え（追加ではない）
-    inbound.set_location_map(new_map)
+# GET簡易ヘルスチェック -----------------------------------------
+@app.get("/health")
+async def health():
+    try:
+        _ = inbound.get_times()
+        return {"ok": True, "detail": "ok"}
+    except Exception as e:
+        return {"ok": False, "detail": f"inbound.get_times() error: {type(e).__name__}: {e}"}
+# -----------------------------------------------------------
 
-    # スケジュール再構築（必要なら lead_minutes を変更）
-    sched_info = inbound.schedule_from_location_map(lead_minutes=0)
-
-    return {
-        "ok": True,
-        "received": len(entries),
-        "location_map": inbound.get_location_map(),
-        "list": inbound.get_location_list(),
-        "schedule": sched_info,
-    }
-
-
-# ────────────────────────────────────────────────────────────────────
-# DB 初期化 & 起動
-# ────────────────────────────────────────────────────────────────────
 db.init_db()
+
+#inbound.start_in_background()
 
 if __name__ == "__main__":
     # FastAPIサーバーを開始

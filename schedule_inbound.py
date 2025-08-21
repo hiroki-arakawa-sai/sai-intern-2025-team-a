@@ -49,6 +49,15 @@ _TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 _JOB_ID_RE = re.compile(rf"^{JOB_ID_PREFIX}(\d{{3}})_([0-2]\d[0-5]\d)_(\d{{2}})$")
 LabelMode = Literal["none", "next_hour_if_55"]  # （後方互換用だが実運用は辞書主導）
 
+# GET用に追加
+_lock = threading.RLock()
+_times: List[str] = [] # "HH:MM" の配列を個々で保持
+
+def get_times() -> List[str]:
+    """現在登録されている時刻一覧を昇順で返す"""
+    with _lock:
+        return sorted(_times)
+
 def ensure_ascii(s: str) -> str:
     if any(ord(ch) > 127 for ch in s):
         raise ValueError(f"Header contains non-ASCII: {repr(s)}")
