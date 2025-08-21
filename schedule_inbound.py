@@ -1,4 +1,4 @@
-# send_inbound_schedule_multi.py
+# schedule_inbound.py
 import json
 import re
 import requests
@@ -7,10 +7,12 @@ from urllib3.util.retry import Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Dict, Literal, Tuple
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
+
+import threading
 
 # ---- 設定 ----
 URL = "https://ip0-254.science-arts.com/buddybot/peerchat"
@@ -24,6 +26,10 @@ TARGET_USERS = [  # ここに送り先を追加
 BOT_NAME = f"BuddyBot72aa07a63b5ceeb2@{TENANT}"
 JST = ZoneInfo("Asia/Tokyo")
 MAX_WORKERS = 8  # 同時送信の最大並列数
+
+# 初期スケジュール（引数省略時に使用）
+INITIAL_TIMES = ["09:44", "10:55", "11:55", "12:55", "13:55", "14:55", "15:55"]
+INITIAL_WEEKDAYS = ["mon", "tue", "wed", "thu", "fri"]
 
 # スケジューラ（外部から再設定可能）
 sched = BlockingScheduler(
@@ -74,7 +80,7 @@ def send_inbound(text: str, target_user: str):
 def send_inbound_all(text: str):
     """TARGET_USERS へ順不同並列で一括送信（重複を排除してから送る）"""
     users = list(dict.fromkeys(TARGET_USERS))
-    results = {}
+    results: Dict[str, Optional[int]] = {}
     with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, max(1, len(users)))) as ex:
         future_map = {ex.submit(send_inbound, text, u): u for u in users}
         for fut in as_completed(future_map):
@@ -126,13 +132,13 @@ def _ensure_weekdays_initialized():
 # 既存ジョブIDから idx と HHMM を抽出
 _JOB_ID_RE = re.compile(rf"^{JOB_ID_PREFIX}(\d{{3}})_([0-2]\d[0-5]\d)$")
 
-def _parse_job_id(job_id: str) -> Optional[tuple[int, str]]:
+def _parse_job_id(job_id: str) -> Optional[Tuple[int, str]]:
     m = _JOB_ID_RE.match(job_id)
     if not m:
         return None
     return int(m.group(1)), m.group(2)
 
-def _timestr_to_hm(timestr: str) -> tuple[int, int]:
+def _timestr_to_hm(timestr: str) -> Tuple[int, int]:
     timestr = timestr.strip()
     if not _TIME_RE.match(timestr):
         raise ValueError(f"Invalid time: '{timestr}' (HH:MM)")
@@ -148,7 +154,7 @@ def _list_job_ids_by_time(timestr: str) -> List[str]:
     return [j.id for j in sched.get_jobs() if j.id.startswith(JOB_ID_PREFIX) and j.id.endswith(suf)]
 
 def _next_job_index() -> int:
-    idxs = []
+    idxs: List[int] = []
     for j in sched.get_jobs():
         parsed = _parse_job_id(j.id)
         if parsed:
@@ -269,7 +275,6 @@ def remove_target_users(users: List[str]) -> List[str]:
     return TARGET_USERS
 # ====== ここまで ======
 
-
 def _norm_weekday(w: str) -> str:
     w0 = w.strip().lower()
     if w0 in _WEEK_MAP_EN:
@@ -319,17 +324,6 @@ def apply_schedule_from_payload(
 ) -> Dict:
     """
     外部から渡された“曜日＋時刻”を検証し、現在のスケジュールを全入れ替えする。
-
-    Parameters
-    ----------
-    times : ["HH:MM", ...]  24時間表記
-    weekdays : ["mon","tue",...] または ["月","火",...]
-    label_mode : "next_hour_if_55" | "none"
-    text_template : 省略時は DEFAULT_TEXT。{now} と {label} が使える。
-
-    Returns
-    -------
-    dict : 反映後の状態（times, weekdays, label_mode, text_template, job_ids）
     """
     # 検証・正規化
     norm_times = _validate_times(times)
@@ -393,7 +387,6 @@ def get_current_schedule() -> Dict:
         "count": len(jobs),
     }
 
-
 def start_scheduler():
     """外部プロセスから起動制御したい場合に使用（BlockingScheduler のため前面でブロック）"""
     print("Scheduler starting... Current:", get_current_schedule())
@@ -404,13 +397,62 @@ def stop_scheduler(wait: bool = False):
     sched.shutdown(wait=wait)
 
 # ====== 直接実行時（任意の初期スケジュールは登録しない） ======
-
 if __name__ == "__main__":
     # 例: 初期スケジュールを入れたい場合は以下をアンコメント
     apply_schedule_from_payload(
-        times=["09:55","10:55","11:55","12:55","13:55","14:55","15:35"],
+        times=["09:56","10:55","11:55","12:55","13:55","14:55","15:35"],
         weekdays=["mon","tue","wed","thu","fri"],
     )
-
     print("Scheduler starting... Current:", get_current_schedule())
     sched.start()
+
+# ==== バックグラウンド起動用の薄いラッパ ====
+_scheduler_thread: Optional[threading.Thread] = None
+_scheduler_lock = threading.Lock()
+
+def start_in_background(
+    *,
+    initial_times: Optional[List[str]] = None,
+    initial_weekdays: Optional[List[str]] = None,
+    label_mode: LabelMode = "next_hour_if_55",
+    text_template: Optional[str] = None,
+) -> bool:
+    """
+    BlockingScheduler を別スレッドで起動する薄いラッパ。
+    既に起動中なら何もしない（idempotent）。
+    引数が省略された場合は INITIAL_TIMES / INITIAL_WEEKDAYS を使う。
+    既にジョブ登録がある場合は再適用しない。
+    """
+    global _scheduler_thread, _LAST_WEEKDAYS
+    with _scheduler_lock:
+        if sched.running:
+            return False
+
+        # まだジョブが無ければ初期スケジュールを適用
+        need_bootstrap = not [j for j in sched.get_jobs() if j.id.startswith(JOB_ID_PREFIX)]
+        times = initial_times if initial_times is not None else INITIAL_TIMES
+        weekdays = initial_weekdays if initial_weekdays is not None else INITIAL_WEEKDAYS
+        if need_bootstrap and times and weekdays:
+            state = apply_schedule_from_payload(
+                times=times,
+                weekdays=weekdays,
+                label_mode=label_mode,
+                text_template=text_template,
+            )
+            # 内部状態も揃えておく（add_times などで使用）
+            _LAST_WEEKDAYS = state["weekdays"]
+
+        t = threading.Thread(target=start_scheduler, daemon=True)
+        t.start()
+        _scheduler_thread = t
+        print("[scheduler] background thread started")
+        return True
+
+def is_running() -> bool:
+    """スケジューラ実行中かどうか"""
+    return sched.running
+
+def stop_background(wait: bool = False) -> None:
+    """バックグラウンドで起動したスケジューラを停止"""
+    stop_scheduler(wait=wait)
+    # Thread は daemon=True のため join は不要

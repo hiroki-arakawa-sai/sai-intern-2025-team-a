@@ -7,6 +7,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Dict, Any
 
+import schedule_inbound as inbound
+
 # FastAPIアプリを初期化
 app = FastAPI()
 
@@ -37,6 +39,10 @@ async def receive_message(req: Request):
     return Response(message=f"受け取ったデータ: {req.data}")
 
 db.init_db()
+
+inbound.start_in_background(
+
+)
 
 if __name__ == "__main__":
     # FastAPIサーバーを開始
