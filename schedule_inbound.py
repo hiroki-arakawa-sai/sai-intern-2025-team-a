@@ -300,6 +300,19 @@ def stop_scheduler(wait: bool = False):
     """停止（通常は使わない）"""
     sched.shutdown(wait=wait)
 
+def get_location_list() -> List[Dict]:
+    """
+    LOCATION_MAP を [{"id": int, "time": str, "area": str}, ...] に変換して返す。
+    time順にソートする。
+    """
+    result = []
+    for idx, (time_str, area) in enumerate(sorted(LOCATION_MAP.items(), key=lambda kv: kv[0])):
+        result.append({
+            "id": idx,
+            "time": time_str,
+            "area": area,
+        })
+    return result
 # ====== 直接実行時の例 ======
 if __name__ == "__main__":
     # ここで “時間→場所” を一元管理
@@ -312,6 +325,7 @@ if __name__ == "__main__":
         "15:00": "三階駐車場",
         "16:00": "すべてのフロア",
     })
+
 
     # 辞書をもとに “その時間に通知” → lead_minutes=0
     schedule_from_location_map(lead_minutes=5)  # その時刻ちょうどに通知
@@ -359,3 +373,5 @@ def stop_background(wait: bool = False) -> None:
     """バックグラウンドで起動したスケジューラを停止"""
     stop_scheduler(wait=wait)
     # Thread は daemon=True のため join は不要
+
+
