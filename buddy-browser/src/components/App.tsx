@@ -34,7 +34,7 @@ function App() {
         setMessages(testData);
       });
     // Time型配列取得
-    fetch('http://0.0.0.0:8000/api/times') //巡回時間取得
+    fetch('http://localhost:8000/schedule/entries') //巡回時間取得
       .then((res) => res.json())
       .then((data) => setTimes(data))
       .catch((err) => {

@@ -19,7 +19,7 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetch("http://0.0.0.0:8000/api/times", {
+      await fetch("http://localhost:8000/hook", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -33,6 +33,16 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
     }
 
     console.log("保存された時間:", times);
+  };
+
+  // 追加ボタン押下時の処理
+  const handleAdd = () => {
+    // 新しいIDを生成（最大ID+1）
+    const newId = times.length > 0 ? Math.max(...times.map(t => t.id)) + 1 : 1;
+    setTimes([
+      ...times,
+      { id: newId, time: "00:00", area: "" }
+    ]);
   };
 
   return (
@@ -58,6 +68,7 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
             <button type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
           </div>
         ))}
+        <button type="button" onClick={handleAdd}>追加</button>
         <button type="submit">保存</button>
       </form>
     </div>

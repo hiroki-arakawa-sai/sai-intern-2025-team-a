@@ -57,7 +57,8 @@ app.add_middleware(
 
 # 受信JSONのスキーマ定義 ---------------------------------------------
 class Response(BaseModel):
-    message: str
+    status: int
+    message: str = ""
 
 class ScheduleEntry(BaseModel):
     id: int = Field(..., ge=0)  # 数値（0以上）
@@ -79,16 +80,15 @@ class MemoRequest(BaseModel):
     customParams: Dict[str, Any] = {}
 
 @app.post("/test/memo", response_model=Response)
-async def receive_message(req: Request):
-    send_time = str(datetime.now())[:-7]
-    db.save_message(req.senderUserName, req.data, send_time)
-    
-    print(f"[DEBUG] 受け取った data: {req.data}")
-    # print(f"[DEBUG] 送信者: {req.senderUserName} ")
-    # print(f"[DEBUG] 時刻: {send_time}")
-    db.get_all_info()
-    #db.delete_table()
-    return Response(message=f"受け取ったデータ: {req.data}")
+async def receive_message(req: MemoRequest):
+    try:
+        send_time = str(datetime.now())[:-7]
+        db.save_message(req.senderUserName, req.data, send_time)
+        db.get_all_info()
+        print(f"[DEBUG] 受け取った data: {req.data}")
+        return Response(status=0)
+    except Exception as e:
+        return Response(status=-2, message="json parse error")
 
 # ==== スケジュール受け取りAPI ====
 # @app.get("/schedule/entries")
@@ -167,4 +167,4 @@ db.init_db()
 
 if __name__ == "__main__":
     # FastAPIサーバーを開始
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
