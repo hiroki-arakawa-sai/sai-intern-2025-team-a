@@ -6,6 +6,7 @@ import db
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Dict, Any
+from datetime import datetime
 
 # FastAPIアプリを初期化
 app = FastAPI()
@@ -30,10 +31,14 @@ class Request(BaseModel):
 
 @app.post("/test/memo", response_model=Response)
 async def receive_message(req: Request):
-    db.save_message(req.senderUserName, req.data)
+    send_time = str(datetime.now())[:-7]
+    db.save_message(req.senderUserName, req.data, send_time)
+
     print(f"[DEBUG] 受け取った data: {req.data}")
     print(f"[DEBUG] 送信者: {req.senderUserName} ")
-    db.get_message()
+    print(f"[DEBUG] 時刻: {send_time}")
+    db.get_all_info()
+    #db.delete_table()
     return Response(message=f"受け取ったデータ: {req.data}")
 
 db.init_db()

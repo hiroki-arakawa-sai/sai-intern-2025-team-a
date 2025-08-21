@@ -14,25 +14,26 @@ def init_db():
     CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         userName TEXT, 
-        text TEXT
+        text TEXT,
+        sendTime TEXT
         )
     """)
 
     conn.commit()
     conn.close()
 # 受け取った文字列を保存----------------------------------------------------------------
-def save_message(username, text):
+def save_message(username, text, sendtime):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (userName, text) VALUES (?, ?)", (username, text))
+    cursor.execute("INSERT INTO messages (userName, text, sendTime) VALUES (?, ?, ?)", (username, text, sendtime))
     conn.commit()
     conn.close()
-    print("DBに保存しました", text)
+    #print("DBに保存しました", text)
 # 文字列を取り出す---------------------------------------------------------
-def get_message():
+def get_all_info():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT userName, text FROM messages")
+    cursor.execute("SELECT * FROM messages")
     rows = cursor.fetchall()
     conn.close()
     print("[DEBUG] all_rows = ", rows)
@@ -46,3 +47,10 @@ def extract_message_from_sender(user_name: str):
     print("[DEBUG] usename_rows = ", rows)
     conn.close()
     return rows
+
+#テーブル削除---------------------------------------------
+def delete_table():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS messages;")
+    print("[DEBUG] 削除した")

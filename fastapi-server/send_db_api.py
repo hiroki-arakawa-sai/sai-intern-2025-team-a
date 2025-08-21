@@ -5,10 +5,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI()
-print("db初期化前")
 db.init_db()
-print("db初期化後")
-
 
 class Message(BaseModel):
     senderUserName: str
@@ -17,10 +14,10 @@ class Message(BaseModel):
 # すべての送信者とメッセージを返す---------------------------------------------
 @app.get("/api/all")
 def get_all_info():
-    rows = db.get_message()
+    rows = db.get_all_info()
     #JSONに変換
     return [
-        {"userName": row[0], "message": row[1]}
+        {"userName": row[1], "message": row[2], "time": row[3]}
         for row in rows
     ]
 
