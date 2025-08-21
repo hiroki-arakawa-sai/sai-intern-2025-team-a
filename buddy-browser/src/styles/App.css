@@ -49,3 +49,7 @@ header button {
   overflow: scroll;
   scrollbar-width: none;
 }
+
+.timebox1 {
+  margin-left: 100px;  /* .timebox クラスの要素だけ右に20px移動 */
+}
