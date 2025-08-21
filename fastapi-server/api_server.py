@@ -17,9 +17,26 @@ app = FastAPI()
 
 @app.on_event("startup")
 async def _startup():
-    #一度だけ呼ぶ
-    inbound.start_in_background()
+    # 1) 先に LOCATION_MAP を設定（必要に応じて編集）
+    inbound.set_location_map({
+        "11:00": "二階テナント",
+        "11:48": "一階食品",
+        "12:58": "駐車場",
+        "13:02": "一階食品",
+        "14:16": "二階テナント",
+        "15:00": "三階駐車場",
+        "16:00": "すべてのフロア",
+    })
 
+    # 2) すぐにスケジュールを再構築（ここでジョブが作られる）
+    inbound.schedule_from_location_map(lead_minutes=0)
+
+    # 3) その後、バックグラウンドでスケジューラを起動
+    inbound.start_in_background(lead_minutes=0)
+
+    # デバッグ出力
+    print("[DEBUG] LOCATION_MAP:", inbound.get_location_map())
+    print("[DEBUG] schedule:", inbound.get_current_schedule())
 
 # 受信JSONのスキーマ定義 ---------------------------------------------
 class Response(BaseModel):
@@ -82,9 +99,26 @@ async def log_post_request(request):
     return body
 
 @app.post("/hook")
-async def hook(request: Request):
-    await log_post_request(request)
-    return {"status": "ok"}
+async def hook(entries: List[ScheduleEntry]):
+    """
+    受け取った配列 [{id,time,area}, ...] で LOCATION_MAP を上書きし、スケジュールを再構築。
+    """
+    # 受信データ -> dict("HH:MM" -> "場所")
+    new_map = {e.time: e.area for e in entries}
+
+    # 置き換え（追加ではない）
+    inbound.set_location_map(new_map)
+
+    # スケジュール再構築（必要なら lead_minutes を変更）
+    sched_info = inbound.schedule_from_location_map(lead_minutes=0)
+
+    return {
+        "ok": True,
+        "received": len(entries),
+        "location_map": inbound.get_location_map(),
+        "list": inbound.get_location_list(),
+        "schedule": sched_info,
+    }
 
 # GET簡易ヘルスチェック -----------------------------------------
 @app.get("/health")
