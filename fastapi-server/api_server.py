@@ -7,13 +7,23 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel, Field, constr
 from typing import Dict, Any, List
 
+# GET動作確認用
+from fastapi import HTTPException
+import traceback
+
+
 # FastAPIアプリを初期化
 app = FastAPI()
 
 @app.on_event("startup")
 async def _startup():
-    #一度だけ呼べばOK。初期時刻/曜日を変えたけれれば引数で指定可能。
-    inbound.start_in_background()
+    #一度だけ呼ぶ
+    inbound.set_location_map({
+        "11:00": "二階テナント",
+        "12:00": "駐車場",
+        "13:00": "一階食品"
+    })
+    inbound.start_in_background(lead_minutes=5)
 
 
 # 受信JSONのスキーマ定義 ---------------------------------------------
@@ -47,14 +57,26 @@ async def receive_message(req: MemoRequest):
     db.get_message()
     return Response(message=f"受け取ったデータ: {req.data}")
 
-# ==== スケジュール操作API ====
+# ==== スケジュール受け取りAPI ====
+# @app.get("/schedule/entries")
+# async def get_entries():
+#     times = inbound.get_times()
+#     # 既存スケジュールには id/area が無いので、id は連番採番、area は空文字で返す
+#     return [{"id": i+1, "time": t, "area": ""} for i, t in enumerate(times)]
+
+# GET確認用------------------------------
 @app.get("/schedule/entries")
 async def get_entries():
-    times = inbound.get_times()
-    # 既存スケジュールには id/area が無いので、id は連番採番、area は空文字で返す
+    try:
+        times = inbound.get_times()
+    except Exception as e:
+        print("[ERROR] inbound.get_times() failed:", e)
+        traceback.print_exc()
+        # クライアントには簡潔な500を返す
+        raise HTTPException(status_code=500, detail=f"inbound.get_times() failed: {type(e).__name__}")
+    # 正常時のレスポンス
     return [{"id": i+1, "time": t, "area": ""} for i, t in enumerate(times)]
-
-
+# -----------------------------------------------
 
 async def log_post_request(request):
     body = await request.body()
@@ -68,6 +90,16 @@ async def log_post_request(request):
 async def hook(request: Request):
     await log_post_request(request)
     return {"status": "ok"}
+
+# GET簡易ヘルスチェック -----------------------------------------
+@app.get("/health")
+async def health():
+    try:
+        _ = inbound.get_times()
+        return {"ok": True, "detail": "ok"}
+    except Exception as e:
+        return {"ok": False, "detail": f"inbound.get_times() error: {type(e).__name__}: {e}"}
+# -----------------------------------------------------------
 
 db.init_db()
 
