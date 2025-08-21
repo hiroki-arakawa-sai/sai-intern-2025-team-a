@@ -1,25 +1,45 @@
 import '../styles/App.css'
 
 import { testCard } from './text-card'
+import { RightSide } from './right-side'
 
 import type { Data } from '../types/data'
 import { testData } from '../types/data'
 
+import type { Time } from '../types/time'
+import { testTimes } from '../types/time'
 
 import { useEffect, useState } from 'react';
-
 function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [times, setTimes] = useState<Time[]>([]);
 
-  // メッセージ取得関数
+  // メッセージと時間取得関数
   const fetchMessages = () => {
-    fetch('http://localhost:8000/messages')
+    fetch('http://localhost:8000/api/all') //ボイスメモ取得
       .then((res) => res.json())
-      .then((data) => setMessages(data))
+      .then((data) => {
+        // APIの型をData型に変換
+        const converted = data.map((item: { userName: string; message: string; time: string }) => ({
+          senderUserName: item.userName,
+          text: item.message,
+          time: item.time,
+          chatBotName: ""
+        }));
+        setMessages(converted);
+      })
       .catch((err) => {
         console.error(err);
         setMessages(testData);
+      });
+    // Time型配列取得
+    fetch('http://0.0.0.0:8000/api/times') //巡回時間取得
+      .then((res) => res.json())
+      .then((data) => setTimes(data))
+      .catch((err) => {
+        console.error(err);
+        setTimes(testTimes);
       });
   };
 
@@ -56,10 +76,10 @@ function App() {
             {filteredMessages.map((data) => (testCard(data)))}
           </div>
         </div>
-        <div className='side'></div>
+        <RightSide times={times} setTimes={setTimes} />
       </div>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

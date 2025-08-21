@@ -1,6 +1,7 @@
 from tkinter.constants import BROWSE
 import uvicorn
 import db
+
 import schedule_inbound as inbound
 
 from fastapi import FastAPI, Request
@@ -12,8 +13,13 @@ from fastapi import HTTPException
 import traceback
 
 
+from send_db_api import get_all_info, get_message
+from datetime import datetime
+
+
 # FastAPIアプリを初期化
 app = FastAPI()
+
 
 @app.on_event("startup")
 async def _startup():
@@ -37,6 +43,17 @@ async def _startup():
     # デバッグ出力
     print("[DEBUG] LOCATION_MAP:", inbound.get_location_map())
     print("[DEBUG] schedule:", inbound.get_current_schedule())
+
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 必要に応じて限定
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # 受信JSONのスキーマ定義 ---------------------------------------------
 class Response(BaseModel):
@@ -62,11 +79,15 @@ class MemoRequest(BaseModel):
     customParams: Dict[str, Any] = {}
 
 @app.post("/test/memo", response_model=Response)
-async def receive_message(req: MemoRequest):
-    db.save_message(req.senderUserName, req.data)
+async def receive_message(req: Request):
+    send_time = str(datetime.now())[:-7]
+    db.save_message(req.senderUserName, req.data, send_time)
+    
     print(f"[DEBUG] 受け取った data: {req.data}")
-    print(f"[DEBUG] 送信者: {req.senderUserName} ")
-    db.get_message()
+    # print(f"[DEBUG] 送信者: {req.senderUserName} ")
+    # print(f"[DEBUG] 時刻: {send_time}")
+    db.get_all_info()
+    #db.delete_table()
     return Response(message=f"受け取ったデータ: {req.data}")
 
 # ==== スケジュール受け取りAPI ====
@@ -130,6 +151,15 @@ async def health():
     except Exception as e:
         return {"ok": False, "detail": f"inbound.get_times() error: {type(e).__name__}: {e}"}
 # -----------------------------------------------------------
+# send_db_apiのエンドポイントを追加
+@app.get("/api/all")
+def api_all():
+    return get_all_info()
+
+@app.get("/api/message/{name}")
+def api_message(name: str):
+    return get_message(name)
+
 
 db.init_db()
 
