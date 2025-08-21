@@ -6,20 +6,32 @@ import { RightSide } from './right-side'
 import type { Data } from '../types/data'
 import { testData } from '../types/data'
 
-import { useEffect, useState } from 'react';
+import type { Time } from '../types/time'
+import { testTimes } from '../types/time'
 
+import { useEffect, useState } from 'react';
 function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [times, setTimes] = useState<Time[]>([]);
 
-  // メッセージ取得関数
+  // メッセージと時間取得関数
   const fetchMessages = () => {
-    fetch('http://http://0.0.0.0:8000/api/all')
+    // メッセージ取得
+    fetch('http://0.0.0.0:8000/api/all')
       .then((res) => res.json())
       .then((data) => setMessages(data))
       .catch((err) => {
         console.error(err);
         setMessages(testData);
+      });
+    // Time型配列取得
+    fetch('http://0.0.0.0:8000/api/times')
+      .then((res) => res.json())
+      .then((data) => setTimes(data))
+      .catch((err) => {
+        console.error(err);
+        setTimes(testTimes);
       });
   };
 
@@ -56,10 +68,10 @@ function App() {
             {filteredMessages.map((data) => (testCard(data)))}
           </div>
         </div>
-          <RightSide />
+        <RightSide times={times} setTimes={setTimes} />
       </div>
     </>
-  )
+  );
 }
 
-export default App
+export default App;
