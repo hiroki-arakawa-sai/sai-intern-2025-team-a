@@ -4,65 +4,69 @@ import { RightSide } from "./right-side";
 import { testCard } from "./text-card";
 
 import type { Data } from "../types/data";
-import { testData } from "../types/data";
 
 import type { Time } from "../types/time";
-import { testTimes } from "../types/time";
 
 import { useEffect, useState } from "react";
 
+type TimeRangeBoxProps = {
+  start: string;
+  end: string;
+  setStart: (value: string) => void;
+  setEnd: (value: string) => void;
+};
 
-export function TimeBox1() {
-  const [time, stTime] = useState("");
-
+// 時間で絞り込むコンポーネント
+export function TimeRangeBox({
+  start,
+  end,
+  setStart,
+  setEnd,
+}: TimeRangeBoxProps) {
   return (
-    <div className="p-4">
-      <label className="block mb-2">時間で絞り込む: </label>
+    <div className="p-4 flex items-center space-x-2">
+      <label>時間で絞り込む:</label>
       <input
         type="time"
-        value={time}
-        onChange={(e) => stTime(e.target.value)}
+        value={start}
+        onChange={(e) => setStart(e.target.value)}
         className="border rounded p-2"
       />
-    </div>
-  );
-}
-
-export function TimeBox2() {
-  const [time2, stTime2] = useState("");
-
-  return (
-    <div className="p-4_1">
-      <label className="block">&ensp;から&ensp;</label>
+      <span>から</span>
       <input
         type="time"
-        value={time2}
-        onChange={(e) => stTime2(e.target.value)}
-        className="border rounded p-2_1"
+        value={end}
+        onChange={(e) => setEnd(e.target.value)}
+        className="border rounded p-2"
       />
-      <label className="block1">&ensp;まで</label>
+      <span>まで</span>
     </div>
   );
 }
 
+// 親コンポーネント
 function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [times, setTimes] = useState<Time[]>([]);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
   // メッセージと時間取得関数
   const fetchMessages = () => {
-    fetch("http://localhost:8000/api/all") //ボイスメモ取得
+    fetch("http://localhost:8000/api/all") // ボイスメモ取得
       .then((res) => res.json())
       .then((data) => {
-        // APIの型をData型に変換
         const converted = data.map(
-          (item: { userName: string; message: string; time: string }) => ({
-            senderUserName: item.userName,
-            text: item.message,
-            time: item.time,
-            chatBotName: "",
-          })
+          (item: { userName: string; message: string; time: string }) => {
+            console.log("APIから来た time:", item.time); // 👈 確認
+            return {
+              senderUserName: item.userName,
+              text: item.message,
+              time: item.time, // ここが "2025-08-21 11:53:33"
+              chatBotName: "",
+            };
+          }
         );
         setMessages(converted);
       })
@@ -70,8 +74,9 @@ function App() {
         console.error(err);
         setMessages(testData);
       });
+
     // Time型配列取得
-    fetch("http://0.0.0.0:8000/api/times") //巡回時間取得
+    fetch("http://0.0.0.0:8000/api/times") // 巡回時間取得
       .then((res) => res.json())
       .then((data) => setTimes(data))
       .catch((err) => {
@@ -87,10 +92,18 @@ function App() {
   // ユーザー一覧を抽出
   const userList = Array.from(new Set(messages.map((m) => m.senderUserName)));
 
-  // 選択されたユーザーのメッセージのみ表示
-  const filteredMessages = selectedUser
-    ? messages.filter((m) => m.senderUserName === selectedUser)
-    : messages;
+  // ユーザーと時間で絞り込み
+  const filteredMessages = messages.filter((m) => {
+    // ユーザーフィルター
+    if (selectedUser && m.senderUserName !== selectedUser) return false;
+
+    // 時間フィルター
+    const messageTime = m.time.slice(11, 16); // "HH:MM" 部分だけ取り出す
+    if (startTime && messageTime < startTime) return false;
+    if (endTime && messageTime > endTime) return false;
+
+    return true;
+  });
 
   return (
     <>
@@ -102,8 +115,13 @@ function App() {
         <div className="center-content">
           <div style={{ display: "flex", height: "10%" }}>
             <h2>メッセージ</h2>
-            <TimeBox1 />
-            <TimeBox2 />
+
+            <TimeRangeBox
+              start={startTime}
+              end={endTime}
+              setStart={setStartTime}
+              setEnd={setEndTime}
+            />
             <select
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
