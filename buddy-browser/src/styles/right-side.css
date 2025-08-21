@@ -1,0 +1,21 @@
+.right-side {
+    overflow: scroll;
+    scrollbar-width: none;
+}
+
+form {
+    margin: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+label {
+    font-weight: bold;
+}
+
+input[type="time"] {
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
