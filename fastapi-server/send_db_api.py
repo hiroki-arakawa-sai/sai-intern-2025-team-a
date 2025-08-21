@@ -17,9 +17,7 @@ class Message(BaseModel):
 # すべての送信者とメッセージを返す---------------------------------------------
 @app.get("/api/all")
 def get_all_info():
-    print("dbから取得前")
     rows = db.get_message()
-    print("dbから取得後")
     #JSONに変換
     return [
         {"userName": row[0], "message": row[1]}
@@ -27,10 +25,9 @@ def get_all_info():
     ]
 
 # nameと一致するユーザー名を返す-------------------------------------------------
-@app.get("/api/test/{name}")
+@app.get("/api/message/{name}")
 def get_message(name: str):
     rows = db.extract_message_from_sender(name)
-    #return {"[DEBUG] message": name}
     return [
         {"message": row[0]}
         for row in rows
