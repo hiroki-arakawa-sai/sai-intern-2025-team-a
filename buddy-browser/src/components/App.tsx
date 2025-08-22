@@ -11,6 +11,8 @@ import { testTimes } from "../types/time";
 
 import { useEffect, useState } from "react";
 
+import buddylog from "../assets/buddylog01.svg";
+
 type TimeRangeBoxProps = {
   year: string;
   month: string;
@@ -178,12 +180,13 @@ function App() {
   return (
     <>
       <header>
+        <img src={buddylog} alt="buffylog" style={{  }} />
         <button onClick={fetchMessages}>更新</button>
       </header>
       <div className="content">
         <div className="side"></div>
         <div className="center-content">
-          <div style={{height:"20%"}}>
+          <div style={{height:"20%", backgroundColor: "#e9fdf7ff"}}>
             <div style={{ display: "flex"}}>
               <h2>メッセージ</h2>
               <select
