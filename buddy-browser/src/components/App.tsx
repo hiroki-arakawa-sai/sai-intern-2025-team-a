@@ -48,6 +48,7 @@ export function TimeRangeBox({
           value={year}
           onChange={(e) => setYear(e.target.value)}
           placeholder="年"
+          min={1970}
           className="border rounded p-2 y-100"
         />
         <label>年</label>
