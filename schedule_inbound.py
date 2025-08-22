@@ -40,9 +40,8 @@ sched = BlockingScheduler(
 )
 JOB_ID_PREFIX = "user_sched_"
 
-# 送信文テンプレ（{now}, {label}, {place}, {lead}, {pre} が使用可）
-# lead_minutes=0 のときは {pre} は "です"、>0 のときは "の{lead}分前です"
-DEFAULT_TEXT = "定時巡回{label}（{place}）{pre}"
+
+DEFAULT_TEXT = "まもなく{place}で定時巡回の時間です"
 
 # ====== 共通ユーティリティ ======
 _TIME_RE = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
@@ -183,14 +182,12 @@ def _make_job_func(label_time: str, lead_minutes: int, text_template: Optional[s
         now = datetime.now(JST)
         place = LOCATION_MAP.get(label_time, "")
         lead = lead_minutes
-        pre = f"の{lead}分前です" if lead > 0 else "です"
+
         template = text_template or DEFAULT_TEXT
         text = template.format(
             now=now.strftime("%H:%M"),
-            label=label_time,
             place=place,
             lead=lead,
-            pre=pre,
         )
         send_inbound_all(text)
     return _job
@@ -227,8 +224,8 @@ def schedule_from_location_map(*, lead_minutes: int = 0, text_template: Optional
         sched.add_job(job, trigger, id=job_id, replace_existing=True)
         job_ids.append(job_id)
 
-    print(datetime.now(JST), "Schedule rebuilt from LOCATION_MAP:",
-          {"labels": label_times, "lead_minutes": lead_minutes})
+    print(f"[{datetime.now(JST):%H:%M:%S}] Rebuilt schedule: {label_times} (lead={lead_minutes}m)")
+
     return {
         "labels": label_times,
         "lead_minutes": lead_minutes,
@@ -326,24 +323,25 @@ def get_location_list() -> List[Dict]:
 if __name__ == "__main__":
     # ここで “時間→場所” を一元管理
     set_location_map({
-        "11:48": "一階食品",
+        "11:00": "一階食品",
         "11:00": "二階テナント",
         "12:00": "駐車場",
         "13:00": "一階食品",
         "14:00": "二階テナント",
-        "15:00": "三階駐車場",
+        "15:50": "三階駐車場",
         "16:00": "すべてのフロア",
     })
 
 
     # 辞書をもとに “その時間に通知” → lead_minutes=0
-    schedule_from_location_map(lead_minutes=5)  # その時刻ちょうどに通知
+    schedule_from_location_map(lead_minutes=0)  # その時刻ちょうどに通知
     # もし「5分前に通知」したいなら: schedule_from_location_map(lead_minutes=5)
 
     # テンプレ変更もワンライナーで（任意）
     # set_text_template("まもなく{label}（{place}）{pre}", lead_minutes=5)
 
-    print("Scheduler starting... Current:", get_current_schedule())
+    print("[Scheduler] started")
+
     sched.start()
 
 # ====== バックグラウンド起動ラッパ ======

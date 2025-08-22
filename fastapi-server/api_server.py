@@ -16,6 +16,8 @@ import traceback
 from send_db_api import get_all_info, get_message
 from datetime import datetime
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # FastAPIアプリを初期化
 app = FastAPI()
@@ -25,11 +27,11 @@ app = FastAPI()
 async def _startup():
     # 1) 先に LOCATION_MAP を設定（必要に応じて編集）
     inbound.set_location_map({
-        "11:00": "二階テナント",
-        "11:48": "一階食品",
-        "12:58": "駐車場",
-        "13:02": "一階食品",
-        "14:16": "二階テナント",
+        "10:00": "二階テナント",
+        "11:00": "一階食品",
+        "12:00": "駐車場",
+        "13:00": "一階食品",
+        "14:00": "二階テナント",
         "15:00": "三階駐車場",
         "16:00": "すべてのフロア",
     })
@@ -42,9 +44,8 @@ async def _startup():
 
     # デバッグ出力
     print("[DEBUG] LOCATION_MAP:", inbound.get_location_map())
-    print("[DEBUG] schedule:", inbound.get_current_schedule())
 
-from fastapi.middleware.cors import CORSMiddleware
+
 
 app.add_middleware(
     CORSMiddleware,
