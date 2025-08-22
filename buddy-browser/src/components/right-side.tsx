@@ -64,6 +64,7 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
               name={`area-input-${time.id}`}
               value={time.area}
               onChange={e => setTimes(times.map(t => t.id === time.id ? { ...t, area: e.target.value } : t))}
+              required
             />
             <button className="delete-button" type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
           </div>

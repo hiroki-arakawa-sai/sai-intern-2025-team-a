@@ -80,7 +80,7 @@ class MemoRequest(BaseModel):
     data: str
     customParams: Dict[str, Any] = {}
 
-@app.post("/test/memo", response_model=Response)
+@app.post("/api/memo", response_model=Response)
 async def receive_message(req: MemoRequest):
     try:
         send_time = str(datetime.now())[:-7]
