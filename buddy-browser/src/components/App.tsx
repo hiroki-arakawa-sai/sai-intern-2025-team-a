@@ -4,10 +4,7 @@ import { RightSide } from "./right-side";
 import { testCard } from "./text-card";
 
 import type { Data } from "../types/data";
-import { testData } from "../types/data";
-
 import type { Time } from "../types/time";
-import { testTimes } from "../types/time";
 
 import { useEffect, useState } from "react";
 
@@ -97,7 +94,8 @@ function App() {
   const [messages, setMessages] = useState<Data[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [times, setTimes] = useState<Time[]>([]);
-  
+  const [error, setError] = useState<string>("");
+
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
   const [date, setDate] = useState("");
@@ -106,16 +104,16 @@ function App() {
 
   // メッセージと時間取得関数
   const fetchMessages = () => {
-    fetch("http://localhost:8000/api/all") // ボイスメモ取得
+    setError("");
+    fetch("http://localhost:8000/api/all")
       .then((res) => res.json())
       .then((data) => {
         const converted = data.map(
           (item: { userName: string; message: string; time: string }) => {
-            console.log("APIから来た time:", item.time); // 👈 確認
             return {
               senderUserName: item.userName,
               text: item.message,
-              time: item.time, // ここが "2025-08-21 11:53:33"
+              time: item.time,
               chatBotName: "",
             };
           }
@@ -123,17 +121,15 @@ function App() {
         setMessages(converted);
       })
       .catch((err) => {
+        setError("メッセージ取得に失敗しました");
         console.error(err);
-        setMessages(testData);
       });
 
-    // Time型配列取得
-    fetch('http://localhost:8000/schedule/entries') //巡回時間取得
+    fetch('http://localhost:8000/schedule/entries')
       .then((res) => res.json())
       .then((data) => setTimes(data))
       .catch((err) => {
         console.error(err);
-        setTimes(testTimes);
       });
   };
 
@@ -214,7 +210,11 @@ function App() {
                 setEnd={setEndTime}
               />
           </div>
+          
           <div className="message">
+            {error && (
+              <div style={{ color: 'red', marginBottom: '8px' }}>{error}</div>
+            )}
             {filteredMessages.map((data) => testCard(data))}
           </div>
         </div>
