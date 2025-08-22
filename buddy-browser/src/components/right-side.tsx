@@ -19,7 +19,7 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetch("http://0.0.0.0:8000/api/times", {
+      await fetch("http://localhost:8000/hook", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -35,10 +35,20 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
     console.log("保存された時間:", times);
   };
 
+  // 追加ボタン押下時の処理
+  const handleAdd = () => {
+    // 新しいIDを生成（最大ID+1）
+    const newId = times.length > 0 ? Math.max(...times.map(t => t.id)) + 1 : 1;
+    setTimes([
+      ...times,
+      { id: newId, time: "00:00", area: "" }
+    ]);
+  };
+
   return (
     <div className='right-side side'>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="time-input">時間を入力:</label>
+        <label htmlFor="time-input">時間を設定</label>
         {times.map((time) => (
           <div key={time.id}>
             <input
@@ -55,10 +65,14 @@ export const RightSide = ({ times, setTimes }: RightSideProps) => {
               value={time.area}
               onChange={e => setTimes(times.map(t => t.id === time.id ? { ...t, area: e.target.value } : t))}
             />
-            <button type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
+            <button className="delete-button" type="button" onClick={() => setTimes(times.filter(t => t.id !== time.id))}>削除</button>
           </div>
         ))}
-        <button type="submit">保存</button>
+        <div className="edit-buttons">
+          <button className="add-button" type="button" onClick={handleAdd}>追加</button>
+          <button className="save-button" type="submit">保存</button>
+        </div>
+        
       </form>
     </div>
   )

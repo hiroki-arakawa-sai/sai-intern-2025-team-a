@@ -6,13 +6,14 @@
 header {
   display: flex;
   margin: 0;
-  background-color: rgb(109, 183, 248);
+  /* background-color: rgb(130, 196, 255); */
+  background: linear-gradient(to right, #c3e3ff, #85cffd);
   width: 100%;
   height: var(--header-height);
 }
 
 header button {
-  background-color: rgb(217, 255, 255);
+  background-color: rgb(229, 251, 251);
   margin: auto 15px auto auto;
   height: 40px;
   width: 50px;
@@ -26,7 +27,7 @@ header button {
 }
 
 .side {
-  width: calc((100% - var(--center-width)) / 2);
+  width: calc((90% - var(--center-width)) / 2);
   height: auto;
   background-color: aliceblue;
 }
@@ -37,15 +38,34 @@ header button {
 }
 
 .center-content h2 {
-  margin: auto 0 auto 20px;
+  margin: auto auto auto 15px;
 }
 
 .center-content select {
-  margin: 10px 15px 10px auto;
+  margin: 5px 15px 5px auto;
 }
 
 .center-content .message {
-  height: 90%;
+  height: 80%;
   overflow: scroll;
   scrollbar-width: none;
+}
+
+.timebox1 {
+  margin-left: 100px;  /* .timebox クラスの要素だけ右に20px移動 */
+}
+
+.time-range {
+  display: flex;
+  margin-left: 20px;
+}
+
+.time-range label {
+  margin-right: 10px;
+}
+
+.time-range input {
+  width: 100px;
+  height: 20px;
+  margin: 2px;
 }
